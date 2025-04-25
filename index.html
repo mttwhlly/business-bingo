@@ -42,6 +42,15 @@
             margin: 20px auto;
         }
         .hidden { display: none; }
+        .notification {
+            min-width: 300px;
+            box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3);
+        }
+        .window {
+            max-width: 600px;
+            margin: 0 auto;
+
+        }
     </style>
 </head>
 <body>
@@ -269,24 +278,54 @@
         }
         
         function subscribeToUpdates() {
-            // Subscribe to changes in the current player's record
-            supabase
-                .channel(`player:${currentPlayer.id}`)
-                .on('postgres_changes', {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'players',
-                    filter: `id=eq.${currentPlayer.id}`
-                }, payload => {
-                    currentPlayer = payload.new;
-                    selectedCells = currentPlayer.selected_cells;
-                    renderBoard();
-                    
-                    if (currentPlayer.has_won) {
-                        document.getElementById('winMessage').classList.remove('hidden');
-                    }
-                })
-                .subscribe();
+    // Subscribe to changes for ALL players in the current room
+    supabase
+        .channel(`room:${currentPlayer.room_code}`)
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'players',
+            filter: `room_code=eq.${currentPlayer.room_code}`
+        }, payload => {
+            // Check if this update is for the current player
+            if (payload.new.id === currentPlayer.id) {
+                currentPlayer = payload.new;
+                selectedCells = currentPlayer.selected_cells;
+                renderBoard();
+                
+                if (currentPlayer.has_won) {
+                    document.getElementById('winMessage').classList.remove('hidden');
+                }
+            } else if (payload.new.has_won) {
+                // Another player has won - notify everyone
+                showWinnerNotification(payload.new.name);
+            }
+        })
+        .subscribe();
+}
+
+        // Add this function to display winner notification
+        function showWinnerNotification(winnerName) {
+            const notification = document.createElement('div');
+            notification.className = 'window notification';
+            notification.innerHTML = `
+                <div class="title-bar">
+                    <div class="title-bar-text">Game Over!</div>
+                </div>
+                <div class="window-body">
+                    <p>${winnerName} has won the game! 🎉</p>
+                    <button onclick="this.parentElement.parentElement.remove()">OK</button>
+                </div>
+            `;
+            
+            // Style the notification
+            notification.style.position = 'fixed';
+            notification.style.top = '50%';
+            notification.style.left = '50%';
+            notification.style.transform = 'translate(-50%, -50%)';
+            notification.style.zIndex = '1000';
+            
+            document.body.appendChild(notification);
         }
         
         // Event listeners
