@@ -240,21 +240,6 @@
             subscribeToUpdates();
         }
         
-        const businessImages = [
-            'https://source.unsplash.com/200x200/?office',
-            'https://source.unsplash.com/200x200/?meeting',
-            'https://source.unsplash.com/200x200/?corporate',
-            'https://source.unsplash.com/200x200/?teamwork',
-            'https://source.unsplash.com/200x200/?workplace',
-            'https://source.unsplash.com/200x200/?business,presentation',
-            'https://source.unsplash.com/200x200/?laptop,business',
-            'https://source.unsplash.com/200x200/?conference',
-            'https://source.unsplash.com/200x200/?handshake',
-            'https://source.unsplash.com/200x200/?desk,office',
-            'https://source.unsplash.com/200x200/?boardroom',
-            'https://source.unsplash.com/200x200/?negotiation'
-        ];
-
         function renderBoard() {
             const grid = document.getElementById('bingoGrid');
             grid.innerHTML = '';
@@ -266,12 +251,6 @@
                 
                 if (selectedCells[index]) {
                     cellElement.classList.add(index === 12 ? 'free' : 'selected');
-                    
-                    // Only add background image if the cell is selected (and not the free space)
-                    if (index !== 12) {
-                        const imageUrl = businessImages[index % businessImages.length];
-                        cellElement.style.backgroundImage = `url('${imageUrl}')`;
-                    }
                 }
                 
                 if (index !== 12) {
