@@ -31,11 +31,26 @@
 
         /* Only show background images for selected cells */
         .bingo-cell.selected {
-            background-size: cover;
-            background-position: center;
             color: white;
             text-shadow: 2px 2px 4px black, -2px -2px 4px black, 
                         2px -2px 4px black, -2px 2px 4px black;
+            font-weight: bold;
+        }
+
+        .bingo-cell.selected::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4); /* Dark overlay for better text contrast */
+            z-index: 1;
+        }
+
+        .bingo-cell.selected span {
+            position: relative;
+            z-index: 2;
         }
 
         .bingo-cell.free {
@@ -240,6 +255,31 @@
             subscribeToUpdates();
         }
         
+        const PEXELS_API_KEY = '3AmSjCSNtLp2aToFNVcEaTqmXQvTpZ1ChtGUnAbHNDsaZ7gWjQuGmK0j';
+        let businessImages = [];
+
+        // Fetch business images from Pexels
+        async function fetchBusinessImages() {
+            try {
+                const response = await fetch('https://api.pexels.com/v1/search?query=business+office&per_page=30', {
+                    headers: {
+                        Authorization: PEXELS_API_KEY
+                    }
+                });
+                
+                const data = await response.json();
+                businessImages = data.photos.map(photo => photo.src.small);
+                console.log('Loaded business images:', businessImages.length);
+            } catch (error) {
+                console.error('Error fetching Pexels images:', error);
+                // Fallback to solid color if API fails
+                businessImages = Array(30).fill('');
+            }
+        }
+
+        // Call this when the app loads
+        fetchBusinessImages();
+
         function renderBoard() {
             const grid = document.getElementById('bingoGrid');
             grid.innerHTML = '';
@@ -251,6 +291,14 @@
                 
                 if (selectedCells[index]) {
                     cellElement.classList.add(index === 12 ? 'free' : 'selected');
+                    
+                    // Only add background image if the cell is selected (and not the free space)
+                    if (index !== 12 && businessImages.length > 0) {
+                        const imageUrl = businessImages[index % businessImages.length];
+                        cellElement.style.backgroundImage = `url('${imageUrl}')`;
+                        cellElement.style.backgroundSize = 'cover';
+                        cellElement.style.backgroundPosition = 'center';
+                    }
                 }
                 
                 if (index !== 12) {
