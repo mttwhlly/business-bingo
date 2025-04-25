@@ -176,6 +176,20 @@
             const playerName = document.getElementById('playerName').value;
             if (!playerName) return;
             
+            // First, check if the room exists
+            const { data: room, error: roomError } = await supabase
+                .from('rooms')
+                .select('*')
+                .eq('code', roomCode)
+                .single();
+            
+            if (roomError || !room) {
+                console.error('Room not found:', roomCode);
+                alert('Room not found. Please check the room code.');
+                return;
+            }
+            
+            // If room exists, proceed with joining
             board = generateBoard();
             selectedCells = Array(25).fill(false);
             selectedCells[12] = true; // Free space
@@ -191,9 +205,10 @@
                 })
                 .select()
                 .single();
-                
+            
             if (playerError) {
                 console.error('Error joining room:', playerError);
+                alert('Error joining room. Please try again.');
                 return;
             }
             
