@@ -22,16 +22,26 @@
             padding: 5px;
             font-size: 12px;
             cursor: pointer;
-            background: white;
             border: 1px solid black;
+            position: relative;
+            overflow: hidden;
+            background: white;
+            color: black;
         }
+
+        /* Only show background images for selected cells */
         .bingo-cell.selected {
-            background-color: #000080;
+            background-size: cover;
+            background-position: center;
             color: white;
+            text-shadow: 2px 2px 4px black, -2px -2px 4px black, 
+                        2px -2px 4px black, -2px 2px 4px black;
         }
+
         .bingo-cell.free {
             background-color: #008000;
             color: white;
+            text-shadow: 1px 1px 2px black;
             cursor: default;
         }
         .bingo-grid {
@@ -230,6 +240,21 @@
             subscribeToUpdates();
         }
         
+        const businessImages = [
+            'https://source.unsplash.com/200x200/?office',
+            'https://source.unsplash.com/200x200/?meeting',
+            'https://source.unsplash.com/200x200/?corporate',
+            'https://source.unsplash.com/200x200/?teamwork',
+            'https://source.unsplash.com/200x200/?workplace',
+            'https://source.unsplash.com/200x200/?business,presentation',
+            'https://source.unsplash.com/200x200/?laptop,business',
+            'https://source.unsplash.com/200x200/?conference',
+            'https://source.unsplash.com/200x200/?handshake',
+            'https://source.unsplash.com/200x200/?desk,office',
+            'https://source.unsplash.com/200x200/?boardroom',
+            'https://source.unsplash.com/200x200/?negotiation'
+        ];
+
         function renderBoard() {
             const grid = document.getElementById('bingoGrid');
             grid.innerHTML = '';
@@ -241,6 +266,12 @@
                 
                 if (selectedCells[index]) {
                     cellElement.classList.add(index === 12 ? 'free' : 'selected');
+                    
+                    // Only add background image if the cell is selected (and not the free space)
+                    if (index !== 12) {
+                        const imageUrl = businessImages[index % businessImages.length];
+                        cellElement.style.backgroundImage = `url('${imageUrl}')`;
+                    }
                 }
                 
                 if (index !== 12) {
