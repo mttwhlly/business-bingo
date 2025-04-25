@@ -1,0 +1,286 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Bingo</title>
+    <link rel="stylesheet" href="https://unpkg.com/98.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { 
+            background-color: #008080; 
+            padding: 20px;
+            font-family: 'MS Sans Serif', sans-serif;
+        }
+        .bingo-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            background: white;
+            border: 1px solid black;
+        }
+        .bingo-cell.selected {
+            background-color: #000080;
+            color: white;
+        }
+        .bingo-cell.free {
+            background-color: #008000;
+            color: white;
+            cursor: default;
+        }
+        .bingo-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="lobby" class="window">
+        <div class="title-bar">
+            <div class="title-bar-text">Business Bingo</div>
+        </div>
+        <div class="window-body">
+            <div class="field-row">
+                <label for="playerName">Your Name:</label>
+                <input type="text" id="playerName" />
+            </div>
+            <div class="field-row-stacked">
+                <button id="createRoomBtn">Create Room</button>
+                <div class="field-row">
+                    <input type="text" id="roomCode" placeholder="Room code" />
+                    <button id="joinRoomBtn">Join Room</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game" class="window hidden">
+        <div class="title-bar">
+            <div class="title-bar-text">Business Bingo - Room: <span id="currentRoomCode"></span></div>
+        </div>
+        <div class="window-body">
+            <div id="winMessage" class="window hidden">
+                <div class="title-bar">
+                    <div class="title-bar-text">Winner!</div>
+                </div>
+                <div class="window-body">
+                    <p>BINGO! You've won! 🎉</p>
+                </div>
+            </div>
+            <div id="bingoGrid" class="bingo-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - You'll need to replace these with your Supabase credentials
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        
+        // Initialize Supabase client
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Game state
+        let currentPlayer = null;
+        let currentRoom = null;
+        let board = [];
+        let selectedCells = [];
+        
+        const defaultPhrases = [
+            "Circle back", "Low-hanging fruit", "Synergy", "Think outside the box",
+            "Take it offline", "Move the needle", "Deep dive", "Bandwidth",
+            "Touch base", "Win-win", "Paradigm shift", "Game changer",
+            "Value proposition", "Core competency", "Best practice", "Streamline",
+            "Leverage", "Ecosystem", "End-to-end", "Scalable", 
+            "Action items", "ROI", "Stakeholders", "Alignment",
+            "Deliverables", "Benchmarking", "Mission critical", "Going forward",
+            "Solutions-oriented", "Data-driven", "Drill down", "Next steps",
+            "At the end of the day", "Put a pin in it", "On the same page", 
+            "Bleeding edge", "Customer-centric", "Proactive", "Innovative"
+        ];
+        
+        function generateBoard() {
+            const shuffled = [...defaultPhrases].sort(() => Math.random() - 0.5);
+            const board = [];
+            
+            for (let i = 0; i < 5; i++) {
+                const row = [];
+                for (let j = 0; j < 5; j++) {
+                    if (i === 2 && j === 2) {
+                        row.push('FREE');
+                    } else {
+                        row.push(shuffled.pop());
+                    }
+                }
+                board.push(row);
+            }
+            
+            return board;
+        }
+        
+        function checkWin(selected) {
+            // Check rows
+            for (let i = 0; i < 5; i++) {
+                if (selected.slice(i * 5, (i + 1) * 5).every(cell => cell)) {
+                    return true;
+                }
+            }
+            
+            // Check columns
+            for (let i = 0; i < 5; i++) {
+                if ([0, 1, 2, 3, 4].every(row => selected[row * 5 + i])) {
+                    return true;
+                }
+            }
+            
+            // Check diagonals
+            if ([0, 6, 12, 18, 24].every(index => selected[index]) ||
+                [4, 8, 12, 16, 20].every(index => selected[index])) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        async function createRoom() {
+            const playerName = document.getElementById('playerName').value;
+            if (!playerName) return;
+            
+            const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            
+            const { data: room, error: roomError } = await supabase
+                .from('rooms')
+                .insert({ code: roomCode, host: playerName })
+                .select()
+                .single();
+                
+            if (roomError) {
+                console.error('Error creating room:', roomError);
+                return;
+            }
+            
+            currentRoom = room;
+            await joinRoom(roomCode);
+        }
+        
+        async function joinRoom(roomCode) {
+            const playerName = document.getElementById('playerName').value;
+            if (!playerName) return;
+            
+            board = generateBoard();
+            selectedCells = Array(25).fill(false);
+            selectedCells[12] = true; // Free space
+            
+            const { data: player, error: playerError } = await supabase
+                .from('players')
+                .insert({
+                    room_code: roomCode,
+                    name: playerName,
+                    board: board,
+                    selected_cells: selectedCells,
+                    has_won: false
+                })
+                .select()
+                .single();
+                
+            if (playerError) {
+                console.error('Error joining room:', playerError);
+                return;
+            }
+            
+            currentPlayer = player;
+            document.getElementById('lobby').classList.add('hidden');
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('currentRoomCode').textContent = roomCode;
+            
+            renderBoard();
+            subscribeToUpdates();
+        }
+        
+        function renderBoard() {
+            const grid = document.getElementById('bingoGrid');
+            grid.innerHTML = '';
+            
+            board.flat().forEach((cell, index) => {
+                const cellElement = document.createElement('button');
+                cellElement.className = 'bingo-cell';
+                cellElement.textContent = cell;
+                
+                if (selectedCells[index]) {
+                    cellElement.classList.add(index === 12 ? 'free' : 'selected');
+                }
+                
+                if (index !== 12) {
+                    cellElement.addEventListener('click', () => selectCell(index));
+                }
+                
+                grid.appendChild(cellElement);
+            });
+        }
+        
+        async function selectCell(index) {
+            if (!currentPlayer || selectedCells[index] || currentPlayer.has_won) return;
+            
+            selectedCells[index] = !selectedCells[index];
+            const hasWon = checkWin(selectedCells);
+            
+            const { error } = await supabase
+                .from('players')
+                .update({
+                    selected_cells: selectedCells,
+                    has_won: hasWon
+                })
+                .eq('id', currentPlayer.id);
+                
+            if (error) {
+                console.error('Error updating cell:', error);
+                return;
+            }
+            
+            renderBoard();
+            
+            if (hasWon) {
+                document.getElementById('winMessage').classList.remove('hidden');
+            }
+        }
+        
+        function subscribeToUpdates() {
+            // Subscribe to changes in the current player's record
+            supabase
+                .channel(`player:${currentPlayer.id}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'players',
+                    filter: `id=eq.${currentPlayer.id}`
+                }, payload => {
+                    currentPlayer = payload.new;
+                    selectedCells = currentPlayer.selected_cells;
+                    renderBoard();
+                    
+                    if (currentPlayer.has_won) {
+                        document.getElementById('winMessage').classList.remove('hidden');
+                    }
+                })
+                .subscribe();
+        }
+        
+        // Event listeners
+        document.getElementById('createRoomBtn').addEventListener('click', createRoom);
+        document.getElementById('joinRoomBtn').addEventListener('click', () => {
+            const roomCode = document.getElementById('roomCode').value.toUpperCase();
+            if (roomCode) joinRoom(roomCode);
+        });
+    </script>
+</body>
+</html>
+
