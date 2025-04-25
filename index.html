@@ -86,7 +86,7 @@
         const SUPABASE_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc0NTYwNzY2MCwiZXhwIjo0OTAxMjgxMjYwLCJyb2xlIjoiYW5vbiJ9.79jq6VuCOiKvXnVXxqsu1VzXj8pK9LcHvxi4Y-Xnh_w';
         
         // Initialize Supabase client
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_KEY);
         
         // Game state
         let currentPlayer = null;
