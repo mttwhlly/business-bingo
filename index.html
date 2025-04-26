@@ -382,25 +382,28 @@
             }
         }
 
-        // Business jargon victory messages
+        // Business jargon victory messages in both first and third person
         const victoryMessages = [
-            "SYNERGY ACHIEVED!",
-            "MISSION ACCOMPLISHED!",
-            "VALUE ADDED!",
-            "PARADIGM SHIFTED!",
-            "GAME CHANGED!",
-            "PRODUCTIVITY OPTIMIZED!",
-            "DISRUPTION COMPLETE!",
-            "SOLUTION DELIVERED!",
-            "GOALS ALIGNED!",
-            "KPI CRUSHED!",
-            "LEVERAGED SUCCESS!",
-            "PROACTIVE WIN!",
-            "THOUGHT LEADER!",
-            "CIRCLE BACK CHAMPION!",
-            "BANDWIDTH MAXIMIZED!",
-            "NEEDLE MOVED!"
+            { first: "SYNERGY ACHIEVED!", third: "ACHIEVED SYNERGY!" },
+            { first: "MISSION ACCOMPLISHED!", third: "ACCOMPLISHED THEIR MISSION!" },
+            { first: "VALUE ADDED!", third: "ADDED VALUE!" },
+            { first: "PARADIGM SHIFTED!", third: "SHIFTED THE PARADIGM!" },
+            { first: "GAME CHANGED!", third: "CHANGED THE GAME!" },
+            { first: "PRODUCTIVITY OPTIMIZED!", third: "OPTIMIZED PRODUCTIVITY!" },
+            { first: "DISRUPTION COMPLETE!", third: "COMPLETED THE DISRUPTION!" },
+            { first: "SOLUTION DELIVERED!", third: "DELIVERED THE SOLUTION!" },
+            { first: "GOALS ALIGNED!", third: "ALIGNED ALL GOALS!" },
+            { first: "KPI CRUSHED!", third: "CRUSHED THE KPIS!" },
+            { first: "LEVERAGED SUCCESS!", third: "LEVERAGED SUCCESS!" },
+            { first: "PROACTIVE WIN!", third: "WON PROACTIVELY!" },
+            { first: "THOUGHT LEADER!", third: "BECAME THE THOUGHT LEADER!" },
+            { first: "CIRCLE BACK CHAMPION!", third: "BECAME THE CIRCLE BACK CHAMPION!" },
+            { first: "BANDWIDTH MAXIMIZED!", third: "MAXIMIZED BANDWIDTH!" },
+            { first: "NEEDLE MOVED!", third: "MOVED THE NEEDLE!" }
         ];
+
+        // Store the current victory message globally for sharing
+        let currentVictoryMessage = null;
 
         function showVictoryAnimation() {
             const grid = document.getElementById('bingoGrid');
@@ -413,17 +416,50 @@
             const randomGif = celebrationGifs[Math.floor(Math.random() * celebrationGifs.length)];
             victoryOverlay.style.backgroundImage = `url('${randomGif}')`;
             
-            // Add randomized business jargon winner text
+            // Get random victory message and store it
+            const messageObject = victoryMessages[Math.floor(Math.random() * victoryMessages.length)];
+            currentVictoryMessage = messageObject;
+            
+            // Add first-person winner text for the winner
             const winnerText = document.createElement('div');
             winnerText.className = 'winner-text';
-            const randomMessage = victoryMessages[Math.floor(Math.random() * victoryMessages.length)];
-            winnerText.textContent = randomMessage;
+            winnerText.textContent = messageObject.first;
             victoryOverlay.appendChild(winnerText);
             
             // Replace grid content with overlay
             grid.appendChild(victoryOverlay);
         }
-        
+
+        function showWinnerNotification(winnerName) {
+            const notification = document.createElement('div');
+            notification.className = 'window notification';
+            notification.style.position = 'fixed';
+            notification.style.top = '50%';
+            notification.style.left = '50%';
+            notification.style.transform = 'translate(-50%, -50%)';
+            notification.style.zIndex = '1000';
+            notification.style.minWidth = '300px';
+            notification.style.boxShadow = '5px 5px 10px rgba(0, 0, 0, 0.3)';
+            
+            // Use the same victory message that the winner sees, but in third person
+            const victoryText = currentVictoryMessage ? 
+                `${winnerName} has ${currentVictoryMessage.third}` : 
+                `${winnerName} has won the game! 🎉`;
+            
+            notification.innerHTML = `
+                <div class="title-bar">
+                    <div class="title-bar-text">Game Over!</div>
+                </div>
+                <div class="window-body">
+                    <p style="padding: 10px;">${victoryText}</p>
+                    <div style="text-align: center; padding: 10px;">
+                        <button onclick="this.closest('.notification').remove()">OK</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+        }
         function subscribeToUpdates() {
             supabase
                 .channel(`room:${currentPlayer.room_code}`)
@@ -442,6 +478,10 @@
                             showVictoryAnimation();
                         }
                     } else if (payload.new.has_won) {
+                        // For non-winners, ensure they see the same victory message
+                        if (!currentVictoryMessage) {
+                            currentVictoryMessage = victoryMessages[Math.floor(Math.random() * victoryMessages.length)];
+                        }
                         showWinnerNotification(payload.new.name);
                     }
                 })
@@ -465,8 +505,8 @@
                     <div class="title-bar-text">Game Over!</div>
                 </div>
                 <div class="window-body">
-                    <p style="padding: 10px;">${winnerName} has won the game! 🎉</p>
-                    <div style="text-align: center; padding: 10px;">
+                    <p style="padding: 10px;">${winnerName} has won the game!</p>
+                    <div style="text-align: center; padding: 10px; border: 1px solid black;">
                         <button onclick="this.closest('.notification').remove()">OK</button>
                     </div>
                 </div>
