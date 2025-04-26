@@ -436,10 +436,13 @@
             { first: "KPI CRUSHED!", third: "CRUSHED THE KPIS!" },
             { first: "LEVERAGED SUCCESS!", third: "LEVERAGED SUCCESS!" },
             { first: "PROACTIVE WIN!", third: "WON PROACTIVELY!" },
-            { first: "THOUGHT LEADER!", third: "BECAME THE THOUGHT LEADER!" },
-            { first: "CIRCLE BACK CHAMPION!", third: "BECAME THE CIRCLE BACK CHAMPION!" },
+            { first: "THOUGHT LEADER!", third: "BECOME THE THOUGHT LEADER!" },
+            { first: "CIRCLE BACK CHAMPION!", third: "BECOME THE CIRCLE BACK CHAMPION!" },
             { first: "BANDWIDTH MAXIMIZED!", third: "MAXIMIZED BANDWIDTH!" },
-            { first: "NEEDLE MOVED!", third: "MOVED THE NEEDLE!" }
+            { first: "OPTIMIZED FOR SUCCESS!", third: "OPTIMIZED FOR SUCCESS!" },
+            { first: "ACTION ITEMS COMPLETED!", third: "COMPLETED THE ACTION ITEMS!" },
+            { first: "ENGAGEMENT BOOSTED!", third: "BOOSTED ENGAGEMENT!" },
+            { first: "INNOVATION UNLEASHED!", third: "UNLEASHED INNOVATION!" },
         ];
 
         // Store the current victory message globally for sharing
@@ -484,14 +487,14 @@
             // Use the same victory message that the winner sees, but in third person
             const victoryText = currentVictoryMessage ? 
                 `${winnerName} has ${currentVictoryMessage.third}` : 
-                `${winnerName} has won the game! 🎉`;
+                `${winnerName} has won the game!`;
             
             notification.innerHTML = `
                 <div class="title-bar">
                     <div class="title-bar-text">Game Over!</div>
                 </div>
                 <div class="window-body">
-                    <p style="padding: 10px;">${victoryText}</p>
+                    <p style="padding: 10px;text-transform:uppercase;">${victoryText}</p>
                     <div style="text-align: center; padding: 10px;">
                         <button onclick="this.closest('.notification').remove()">OK</button>
                     </div>
