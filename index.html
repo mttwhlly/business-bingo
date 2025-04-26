@@ -448,6 +448,33 @@
                 .subscribe();
         }
         
+        // Add this function to display notification when another player wins
+        function showWinnerNotification(winnerName) {
+            const notification = document.createElement('div');
+            notification.className = 'window notification';
+            notification.style.position = 'fixed';
+            notification.style.top = '50%';
+            notification.style.left = '50%';
+            notification.style.transform = 'translate(-50%, -50%)';
+            notification.style.zIndex = '1000';
+            notification.style.minWidth = '300px';
+            notification.style.boxShadow = '5px 5px 10px rgba(0, 0, 0, 0.3)';
+            
+            notification.innerHTML = `
+                <div class="title-bar">
+                    <div class="title-bar-text">Game Over!</div>
+                </div>
+                <div class="window-body">
+                    <p style="padding: 10px;">${winnerName} has won the game! 🎉</p>
+                    <div style="text-align: center; padding: 10px;">
+                        <button onclick="this.closest('.notification').remove()">OK</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+        }
+        
         // Event listeners
         document.getElementById('createRoomBtn').addEventListener('click', createRoom);
         document.getElementById('joinRoomBtn').addEventListener('click', () => {
