@@ -63,6 +63,7 @@
             gap: 5px;
             max-width: 600px;
             margin: 20px auto;
+            position: relative;
         }
         .hidden { display: none; }
         .notification {
@@ -77,6 +78,31 @@
         .sunken-panel {
             padding: 0 10px;
             margin-bottom: 20px;
+        }
+        .victory-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .winner-text {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px 40px;
+            font-size: 36px;
+            font-weight: bold;
+            border: 3px solid white;
+            text-shadow: 2px 2px 4px black;
+            border-radius: 10px;
         }
     </style>
 </head>
@@ -321,8 +347,17 @@
             });
         }
         
+        // Add celebration GIFs array
+        const celebrationGifs = [
+            'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', // office celebration
+            'https://media.giphy.com/media/Is1O1TWV0LEJi/giphy.gif', // business success
+            'https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif', // happy office workers
+            'https://media.giphy.com/media/l0MYC0LajbaPoEADu/giphy.gif', // cash money
+            'https://media.giphy.com/media/LdOyjZ7io5Msw/giphy.gif'  // wolf of wall street
+        ];
+
         async function selectCell(index) {
-            if (!currentPlayer || selectedCells[index] || currentPlayer.has_won) return;
+            if (!currentPlayer || index === 12) return;
             
             selectedCells[index] = !selectedCells[index];
             const hasWon = checkWin(selectedCells);
@@ -343,59 +378,74 @@
             renderBoard();
             
             if (hasWon) {
-                document.getElementById('winMessage').classList.remove('hidden');
+                showVictoryAnimation();
             }
+        }
+
+        // Business jargon victory messages
+        const victoryMessages = [
+            "SYNERGY ACHIEVED!",
+            "MISSION ACCOMPLISHED!",
+            "VALUE ADDED!",
+            "PARADIGM SHIFTED!",
+            "GAME CHANGED!",
+            "PRODUCTIVITY OPTIMIZED!",
+            "DISRUPTION COMPLETE!",
+            "SOLUTION DELIVERED!",
+            "GOALS ALIGNED!",
+            "KPI CRUSHED!",
+            "LEVERAGED SUCCESS!",
+            "PROACTIVE WIN!",
+            "THOUGHT LEADER!",
+            "CIRCLE BACK CHAMPION!",
+            "BANDWIDTH MAXIMIZED!",
+            "NEEDLE MOVED!"
+        ];
+
+        function showVictoryAnimation() {
+            const grid = document.getElementById('bingoGrid');
+            
+            // Create victory overlay
+            const victoryOverlay = document.createElement('div');
+            victoryOverlay.className = 'victory-overlay';
+            
+            // Add random celebration GIF
+            const randomGif = celebrationGifs[Math.floor(Math.random() * celebrationGifs.length)];
+            victoryOverlay.style.backgroundImage = `url('${randomGif}')`;
+            
+            // Add randomized business jargon winner text
+            const winnerText = document.createElement('div');
+            winnerText.className = 'winner-text';
+            const randomMessage = victoryMessages[Math.floor(Math.random() * victoryMessages.length)];
+            winnerText.textContent = randomMessage;
+            victoryOverlay.appendChild(winnerText);
+            
+            // Replace grid content with overlay
+            grid.appendChild(victoryOverlay);
         }
         
         function subscribeToUpdates() {
-    // Subscribe to changes for ALL players in the current room
-    supabase
-        .channel(`room:${currentPlayer.room_code}`)
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'players',
-            filter: `room_code=eq.${currentPlayer.room_code}`
-        }, payload => {
-            // Check if this update is for the current player
-            if (payload.new.id === currentPlayer.id) {
-                currentPlayer = payload.new;
-                selectedCells = currentPlayer.selected_cells;
-                renderBoard();
-                
-                if (currentPlayer.has_won) {
-                    document.getElementById('winMessage').classList.remove('hidden');
-                }
-            } else if (payload.new.has_won) {
-                // Another player has won - notify everyone
-                showWinnerNotification(payload.new.name);
-            }
-        })
-        .subscribe();
-}
-
-        // Add this function to display winner notification
-        function showWinnerNotification(winnerName) {
-            const notification = document.createElement('div');
-            notification.className = 'window notification';
-            notification.innerHTML = `
-                <div class="title-bar">
-                    <div class="title-bar-text">Game Over!</div>
-                </div>
-                <div class="window-body">
-                    <p>${winnerName} has won the game! 🎉</p>
-                    <button onclick="this.parentElement.parentElement.remove()">OK</button>
-                </div>
-            `;
-            
-            // Style the notification
-            notification.style.position = 'fixed';
-            notification.style.top = '50%';
-            notification.style.left = '50%';
-            notification.style.transform = 'translate(-50%, -50%)';
-            notification.style.zIndex = '1000';
-            
-            document.body.appendChild(notification);
+            supabase
+                .channel(`room:${currentPlayer.room_code}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'players',
+                    filter: `room_code=eq.${currentPlayer.room_code}`
+                }, payload => {
+                    if (payload.new.id === currentPlayer.id) {
+                        currentPlayer = payload.new;
+                        selectedCells = currentPlayer.selected_cells;
+                        renderBoard();
+                        
+                        if (currentPlayer.has_won) {
+                            showVictoryAnimation();
+                        }
+                    } else if (payload.new.has_won) {
+                        showWinnerNotification(payload.new.name);
+                    }
+                })
+                .subscribe();
         }
         
         // Event listeners
