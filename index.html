@@ -5,12 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Business Bingo</title>
     <link rel="stylesheet" href="https://unpkg.com/98.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jacquard+24&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        .title-bar, .window, button, input, label, option, select, table, textarea, ul.tree-view {
+            font-size: unset;
+        }
         body { 
             background-color: #008080; 
             padding: 20px;
             font-family: 'MS Sans Serif', sans-serif;
+            font-size: 16px;
         }
         /* Make the grid responsive */
         .bingo-grid {
@@ -31,6 +38,10 @@
             width: 100%;
             max-width: 800px;
             margin: 0 auto;
+            box-sizing: border-box;
+        }
+        .window-body {
+            padding: 20px;
             box-sizing: border-box;
         }
 
@@ -64,7 +75,6 @@
             position: relative;
             cursor: pointer;
             border: 1px solid black;
-            background: white;
             color: black;
             z-index: 1;
         }
@@ -151,6 +161,10 @@
             padding: 0 10px;
             margin-bottom: 20px;
         }
+        ol, ul {
+            line-height: 2;
+            padding-inline-start: 10px;
+        }
         .victory-overlay {
             /* Changed to fixed positioning to prevent scrolling */
             position: fixed;
@@ -197,23 +211,54 @@
             border: 3px solid white;
             text-shadow: 2px 2px 4px black;
         }
+        .lobby-hero {
+            margin-bottom: 24px;
+        }
+        .lobby-title {
+            font-family: 'Jacquard 24', sans-serif;
+            text-align: center;
+            margin-bottom: 16px;
+            margin-top: 0;
+        }
+        .lobby-subtitle {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .status-bar {
+            margin-top: 8px;
+        }
+        button:not(.bingo-cell, .exit-button), input[type=email], input[type=number], input[type=password], input[type=text] {
+            height: 40px;
+            width: 100%;
+            padding: 0 10px;
+        }
+        button#joinRoomBtn {
+            margin-top: 0px;
+        }
     </style>
 </head>
 <body>
     <div id="lobby" class="window">
         <div class="title-bar">
-            <div class="title-bar-text">Business Bingo</div>
+            <div class="title-bar-text">Business Bingo - Lobby</div>
         </div>
         <div class="window-body">
-            <div class="sunken-panel">
-                <p>Meeting Agenda:</p>
-                <ol>
-                    <li><b>Introduction:</b> Write your name below -- and please do it quickly because we're timeboxed.</li>
-                    <li><b>Follow up:</b> Got an invite? Paste it below and join the room. The team is waiting.</li>
-                    <li><b>Action Item:</b> No invite code? Create one and share it before you-know-who does.</li>
-                </ol>
+            <div class="lobby-hero">
+                <h1 class="lobby-title">Business Bingo</h1>
+                <h2 class="lobby-subtitle">"Have the best of times during the worst of times"</h2>
+                <!-- <div class="sunken-panel"> -->
+                    <p>Meeting Agenda:</p>
+                    <ul>
+                        <li><b>Introduction:</b> Write your name below quickly ...we're timeboxed.</li>
+                        <li><b>Follow up:</b> Got an invite? Paste it below and join the room. The team is waiting.</li>
+                        <li><b>Action Item:</b> No invite code? Create a room. You're the host.</li>
+                    </ul>
+            <!-- </div> -->
+            <hr />
             </div>
-            <div class="field-row">
+            <div class="field-row-stacked">
                 <label for="playerName">Your Name:</label>
                 <input type="text" id="playerName" />
             </div>
@@ -225,6 +270,11 @@
                 </div>
             </div>
         </div>
+        <div class="status-bar">
+            <p class="status-bar-field">Press F13 for help</p>
+            <p class="status-bar-field">Lobby</p>
+            <p class="status-bar-field">CPU Usage: 14%</p>
+          </div>
     </div>
 
     <div id="game" class="window hidden">
@@ -542,13 +592,16 @@
             
             // Add exit button
             const exitButton = document.createElement('button');
+            exitButton.type = 'button'; // Prevents it from acting as a submit button
             exitButton.className = 'exit-button';
             exitButton.textContent = '×';
-            exitButton.onclick = () => { 
+            victoryOverlay.appendChild(exitButton);
+
+            exitButton.onclick = (event) => { 
+                event.stopPropagation(); // Prevents the click from bubbling up to the overlay
                 victoryOverlay.remove();
                 returnToLobby();
             };
-            victoryOverlay.appendChild(exitButton);
             
             // Add to body instead of grid to ensure fixed positioning works
             document.body.appendChild(victoryOverlay);
