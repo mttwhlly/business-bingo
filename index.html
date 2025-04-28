@@ -226,6 +226,20 @@
             margin-top: 0;
             margin-bottom: 20px;
         }
+        .leaderboard {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: transparent;
+            border-radius: 5px;
+            padding-top: 0;
+        }
+        table>thead>tr>* {
+            height: 32px;
+        }
+        table>tbody>tr>* {
+            padding: 8px;
+            text-align: left;
+        }
         .status-bar {
             margin-top: 8px;
         }
@@ -282,17 +296,19 @@
             <div class="title-bar-text">Business Bingo - Room: <span id="currentRoomCode"></span></div>
         </div>
         <div class="window-body">
-            <table style="width: 100%;">
-                <thead>
-                    <tr>
-                        <th style="text-align: left;">Player</th>
-                        <th style="text-align: right;">Wins</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboardBody">
-                    <!-- Leaderboard entries will be populated here -->
-                </tbody>
-            </table>
+            <div class="leaderboard">
+                <table style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Player</th>
+                            <th style="text-align: right;">Wins</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <!-- Leaderboard entries will be populated here -->
+                    </tbody>
+                </table>
+            </div>
             <div id="bingoGrid" class="bingo-grid"></div>
         </div>
     </div>
@@ -329,6 +345,9 @@
             "How long will that take?", "Leadership",
             "I submitted a ticket", "Call to action", "Need to drop",
             "Line of sight", "In the loop", "Circle back", "AI", "ChatGPT",
+            "Connectivity Issues", "Can you scroll down?", "Can you see my screen?",
+            "Could you repeat that?", "I was multitasking", "I have a hard stop",
+            "Do we want to take a break?", "I have a quick question",
         ];
         
         function generateBoard() {
