@@ -282,6 +282,17 @@
             <div class="title-bar-text">Business Bingo - Room: <span id="currentRoomCode"></span></div>
         </div>
         <div class="window-body">
+            <table style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Player</th>
+                        <th style="text-align: right;">Wins</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <!-- Leaderboard entries will be populated here -->
+                </tbody>
+            </table>
             <div id="bingoGrid" class="bingo-grid"></div>
         </div>
     </div>
@@ -299,6 +310,11 @@
         let currentRoom = null;
         let board = [];
         let selectedCells = [];
+        // Add a flag to track if victory has been shown already
+        let victoryAlreadyShown = false;
+
+        // Add leaderboard tracking
+        let leaderboard = [];
         
         const defaultPhrases = [
             "Synergy", "Think outside the box",
@@ -400,6 +416,7 @@
             board = generateBoard();
             selectedCells = Array(25).fill(false);
             selectedCells[12] = true; // Free space
+            victoryAlreadyShown = false; // Reset victory flag
             
             const { data: player, error: playerError } = await supabase
                 .from('players')
@@ -408,7 +425,8 @@
                     name: playerName,
                     board: board,
                     selected_cells: selectedCells,
-                    has_won: false
+                    has_won: false,
+                    win_count: 0
                 })
                 .select()
                 .single();
@@ -425,6 +443,7 @@
             document.getElementById('currentRoomCode').textContent = roomCode;
             
             renderBoard();
+            updateLeaderboard(roomCode);
             subscribeToUpdates();
         }
         
@@ -512,8 +531,55 @@
             
             renderBoard();
             
-            if (hasWon) {
+            // Only show victory animation if we haven't shown it yet
+            if (hasWon && !victoryAlreadyShown) {
+                victoryAlreadyShown = true;
                 showVictoryAnimation();
+            }
+
+            // If player won, increment their win count
+            if (hasWon) {
+                const { data, error: countError } = await supabase
+                    .from('players')
+                    .select('win_count')
+                    .eq('id', currentPlayer.id)
+                    .single();
+                
+                if (!countError) {
+                    const currentWinCount = data.win_count || 0;
+                    const newWinCount = currentWinCount + 1;
+                    
+                    const { error } = await supabase
+                        .from('players')
+                        .update({
+                            selected_cells: selectedCells,
+                            has_won: hasWon,
+                            win_count: newWinCount
+                        })
+                        .eq('id', currentPlayer.id);
+                        
+                    if (error) {
+                        console.error('Error updating cell:', error);
+                        return;
+                    }
+                    
+                    // Update leaderboard after win
+                    updateLeaderboard(currentPlayer.room_code);
+                }
+            } else {
+                // Regular update without changing win count
+                const { error } = await supabase
+                    .from('players')
+                    .update({
+                        selected_cells: selectedCells,
+                        has_won: hasWon
+                    })
+                    .eq('id', currentPlayer.id);
+                    
+                if (error) {
+                    console.error('Error updating cell:', error);
+                    return;
+                }
             }
         }
 
@@ -543,13 +609,110 @@
         // Store the current victory message globally for sharing
         let currentVictoryMessage = null;
 
-        // Add this function to return to lobby
+        // Reset the game for all players
+        async function resetGameForAll() {
+            // Clean up any existing victory overlays
+            const existingOverlays = document.querySelectorAll('.victory-overlay');
+            existingOverlays.forEach(overlay => overlay.remove());
+            
+            // Clean up any notifications
+            const notifications = document.querySelectorAll('.notification');
+            notifications.forEach(n => n.remove());
+            
+            // Generate a new board
+            board = generateBoard();
+            selectedCells = Array(25).fill(false);
+            selectedCells[12] = true; // Free space is always selected
+            victoryAlreadyShown = false;
+            
+            // Update the current player in the database
+            const { error } = await supabase
+                .from('players')
+                .update({
+                    board: board,
+                    selected_cells: selectedCells,
+                    has_won: false
+                })
+                .eq('id', currentPlayer.id);
+                
+            if (error) {
+                console.error('Error resetting game:', error);
+                return;
+            }
+            
+            // Render the new board
+            renderBoard();
+            
+            // Broadcast a message to reset all players' games
+            const { error: broadcastError } = await supabase
+                .from('rooms')
+                .update({
+                    last_reset: new Date().toISOString() // Add a timestamp for the reset
+                })
+                .eq('code', currentPlayer.room_code);
+                
+            if (broadcastError) {
+                console.error('Error broadcasting reset:', broadcastError);
+            }
+        }
+
+        // Leaderboard functionality for Business Bingo
+        async function updateLeaderboard(roomCode) {
+            try {
+                // Get all players in the room with their win counts
+                const { data: players, error } = await supabase
+                    .from('players')
+                    .select('name, win_count')
+                    .eq('room_code', roomCode)
+                    .order('win_count', { ascending: false });
+                
+                if (error) {
+                    console.error('Error fetching leaderboard:', error);
+                    return;
+                }
+                
+                // Render the leaderboard
+                const leaderboardBody = document.getElementById('leaderboardBody');
+                leaderboardBody.innerHTML = '';
+                
+                if (players && players.length > 0) {
+                    players.forEach((player) => {
+                        const row = document.createElement('tr');
+                        
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = player.name;
+                        
+                        const winCell = document.createElement('td');
+                        winCell.textContent = player.win_count || 0;
+                        winCell.style.textAlign = 'right';
+                        
+                        row.appendChild(nameCell);
+                        row.appendChild(winCell);
+                        
+                        leaderboardBody.appendChild(row);
+                    });
+                } else {
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    cell.colSpan = 2;
+                    cell.textContent = 'No players yet';
+                    cell.style.textAlign = 'center';
+                    row.appendChild(cell);
+                    leaderboardBody.appendChild(row);
+                }
+            } catch (e) {
+                console.error('Error in updateLeaderboard:', e);
+            }
+        }
+        
+        // Add this function to return to lobby (kept for back button functionality)
         function returnToLobby() {
             // Reset game state
             currentPlayer = null;
             currentRoom = null;
             board = [];
             selectedCells = [];
+            victoryAlreadyShown = false;
             
             // Clear input fields
             document.getElementById('playerName').value = '';
@@ -562,15 +725,21 @@
             // Clean up any notifications
             const notifications = document.querySelectorAll('.notification');
             notifications.forEach(n => n.remove());
+            
+            // Clean up any existing victory overlays
+            const existingOverlays = document.querySelectorAll('.victory-overlay');
+            existingOverlays.forEach(overlay => overlay.remove());
         }
 
         function showVictoryAnimation() {
-            const grid = document.getElementById('bingoGrid');
+            // Check if an overlay already exists and remove it first
+            const existingOverlays = document.querySelectorAll('.victory-overlay');
+            existingOverlays.forEach(overlay => overlay.remove());
             
             // Create victory overlay with fixed positioning
             const victoryOverlay = document.createElement('div');
             victoryOverlay.className = 'victory-overlay';
-            victoryOverlay.style.position = 'fixed'; // Changed from absolute to fixed
+            victoryOverlay.style.position = 'fixed';
             victoryOverlay.style.top = '0';
             victoryOverlay.style.left = '0';
             victoryOverlay.style.width = '100vw';
@@ -600,7 +769,7 @@
             exitButton.onclick = (event) => { 
                 event.stopPropagation(); // Prevents the click from bubbling up to the overlay
                 victoryOverlay.remove();
-                returnToLobby();
+                resetGameForAll();
             };
             
             // Add to body instead of grid to ensure fixed positioning works
@@ -608,6 +777,10 @@
         }
 
         function showWinnerNotification(winnerName) {
+            // Remove any existing notifications first
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notification => notification.remove());
+            
             const notification = document.createElement('div');
             notification.className = 'window notification';
             notification.style.position = 'fixed';
@@ -630,14 +803,16 @@
                 <div class="window-body">
                     <p style="padding: 10px;">${victoryText}</p>
                     <div style="text-align: center; padding: 10px;">
-                        <button onclick="this.closest('.notification').remove(); returnToLobby()">OK</button>
+                        <button onclick="this.closest('.notification').remove();">OK</button>
                     </div>
                 </div>
             `;
             
             document.body.appendChild(notification);
         }
+        
         function subscribeToUpdates() {
+            // Subscribe to player updates
             supabase
                 .channel(`room:${currentPlayer.room_code}`)
                 .on('postgres_changes', {
@@ -649,9 +824,12 @@
                     if (payload.new.id === currentPlayer.id) {
                         currentPlayer = payload.new;
                         selectedCells = currentPlayer.selected_cells;
+                        board = currentPlayer.board;
                         renderBoard();
                         
-                        if (currentPlayer.has_won) {
+                        // Only show victory animation if we haven't shown it yet
+                        if (currentPlayer.has_won && !victoryAlreadyShown) {
+                            victoryAlreadyShown = true;
                             showVictoryAnimation();
                         }
                     } else if (payload.new.has_won) {
@@ -660,9 +838,65 @@
                             currentVictoryMessage = victoryMessages[Math.floor(Math.random() * victoryMessages.length)];
                         }
                         showWinnerNotification(payload.new.name);
+                        updateLeaderboard(currentPlayer.room_code);
                     }
                 })
                 .subscribe();
+                
+            // Subscribe to room updates (for game resets)
+            supabase
+                .channel(`room-updates:${currentPlayer.room_code}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'rooms',
+                    filter: `code=eq.${currentPlayer.room_code}`
+                }, async payload => {
+                    // If there's a new reset timestamp and it's not our initial join
+                    if (payload.new.last_reset && payload.old && payload.new.last_reset !== payload.old.last_reset) {
+                        console.log('Game reset detected, generating new board');
+                        
+                        // Generate a new board
+                        board = generateBoard();
+                        selectedCells = Array(25).fill(false);
+                        selectedCells[12] = true; // Free space
+                        victoryAlreadyShown = false;
+                        
+                        // Update our player record
+                        const { error } = await supabase
+                            .from('players')
+                            .update({
+                                board: board,
+                                selected_cells: selectedCells,
+                                has_won: false
+                            })
+                            .eq('id', currentPlayer.id);
+                            
+                        if (error) {
+                            console.error('Error updating player after reset:', error);
+                        }
+                        
+                        // Update UI
+                        renderBoard();
+                        updateLeaderboard(currentPlayer.room_code);
+                    }
+                })
+                .subscribe();
+
+                // Add a new subscription for player joins:
+                // Also subscribe to new players joining to update leaderboard
+                supabase
+                    .channel(`room-players:${currentPlayer.room_code}`)
+                    .on('postgres_changes', {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'players',
+                        filter: `room_code=eq.${currentPlayer.room_code}`
+                    }, () => {
+                        // Update leaderboard when new players join
+                        updateLeaderboard(currentPlayer.room_code);
+                    })
+                    .subscribe();
         }
         
         // Event listeners
@@ -671,7 +905,15 @@
             const roomCode = document.getElementById('roomCode').value.toUpperCase();
             if (roomCode) joinRoom(roomCode);
         });
+
+        // Clean up function to ensure no overlays persist when leaving
+        window.addEventListener('beforeunload', () => {
+            const existingOverlays = document.querySelectorAll('.victory-overlay');
+            existingOverlays.forEach(overlay => overlay.remove());
+            
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notification => notification.remove());
+        });
     </script>
 </body>
 </html>
-
