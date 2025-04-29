@@ -395,28 +395,61 @@
         let leaderboard = [];
         
         const defaultPhrases = [
-            "Synergy", "Think outside the box",
-            "Take it offline", "Bandwidth",
-            "Touch base", "Win-win", "Game changer",
-            "KPI", "Best practice", "Streamline", 
-            "Scalable", "You're on mute", "Double-click",
-            "Action items", "ROI", "Stakeholders", "Alignment",
-            "Deliverables", "Going forward", "Almost Friday", 
-            "Data-driven", "Drill down", "Next steps",
-            "On the same page", "Can you send me that?", "Can I share my screen?",
-            "How long will that take?", "Leadership",
+            "Can you send me that?", "Can I share my screen?",
+            "How long will that take?",
             "I submitted a ticket", "Call to action", "Need to drop",
             "Line of sight", "In the loop", "Circle back", "AI", "ChatGPT",
             "Connectivity Issues", "Can you scroll down?", "Can you see my screen?",
             "Could you repeat that?", "I was multitasking", "I have a hard stop",
             "Do we want to take a break?", "I have a quick question",
-            "Am I missing something?", "Wildcard (Your Company's Jargon)", 
+            "Am I missing something?", 
             "This is a living breathing document", "I need to run this by my manager",
-            "Let's put this to bed"
+            "Let's put this to bed", "We're timeboxed", "Can we take this offline?",
         ];
-        
+
+        function fetchPhrasesFromGoogleSheets() {
+        return new Promise((resolve, reject) => {
+            // Your Google Apps Script URL
+            const scriptUrl = 'https://script.google.com/macros/s/AKfycbyZJPNYWbaiq2GBEzibciwqUZl1q6DEW-yrJDcr9ULjwSRM7HZ86YOoeiUQrVsAfHz8kQ/exec';
+            
+            // Create a unique callback name
+            const callbackName = 'googleSheetsCallback_' + Math.round(Math.random() * 100000);
+            
+            // Create the script element
+            const script = document.createElement('script');
+            script.src = `${scriptUrl}?callback=${callbackName}`;
+            
+            // Set up the callback function
+            window[callbackName] = function(data) {
+            // Clean up
+            document.body.removeChild(script);
+            delete window[callbackName];
+            
+            if (data && data.phrases && data.phrases.length > 0) {
+                console.log('Loaded phrases from Google Sheets:', data.phrases.length);
+                resolve(data.phrases);
+            } else {
+                console.warn('No phrases found in Google Sheets, using defaults');
+                resolve(defaultPhrases);
+            }
+            };
+            
+            // Handle errors
+            script.onerror = () => {
+            document.body.removeChild(script);
+            delete window[callbackName];
+            console.error('Error loading phrases from Google Sheets');
+            reject(new Error('Failed to load phrases'));
+            };
+            
+            // Add the script to the page
+            document.body.appendChild(script);
+        });
+        }
+        // Then modify the generateBoard function to use these phrases
         function generateBoard() {
-            const shuffled = [...defaultPhrases].sort(() => Math.random() - 0.5);
+            // Use the global phrases array
+            const shuffled = [...phrases].sort(() => Math.random() - 0.5);
             const board = [];
             
             for (let i = 0; i < 5; i++) {
@@ -433,7 +466,62 @@
             
             return board;
         }
-        
+
+        // Initialize app with phrases
+        let phrases = [];
+
+        async function initializeApp() {
+            try {
+                // Fetch phrases from Google Sheets
+                phrases = await fetchPhrasesFromGoogleSheets();
+                
+                // If we didn't get enough phrases, use defaults
+                if (!phrases || phrases.length < 24) {
+                    console.warn("Not enough phrases from Google Sheets, using defaults");
+                    phrases = defaultPhrases;
+                }
+                
+                console.log("App initialized with phrases!");
+                
+                // Enable UI after phrases are loaded
+                document.getElementById('createRoomBtn').disabled = false;
+                document.getElementById('joinRoomBtn').disabled = false;
+            } catch (error) {
+                console.error("Error initializing app:", error);
+                phrases = defaultPhrases;
+            }
+        }
+
+        // When the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Disable buttons until phrases are loaded
+            document.getElementById('createRoomBtn').disabled = true;
+            document.getElementById('joinRoomBtn').disabled = true;
+            
+            // Load phrases and initialize app
+            initializeApp();
+        });
+
+        // Update the generateBoard function to use the loaded phrases
+        function generateBoard() {
+            const shuffled = [...phrases].sort(() => Math.random() - 0.5);
+            const board = [];
+            
+            for (let i = 0; i < 5; i++) {
+                const row = [];
+                for (let j = 0; j < 5; j++) {
+                    if (i === 2 && j === 2) {
+                        row.push('FREE');
+                    } else {
+                        row.push(shuffled.pop());
+                    }
+                }
+                board.push(row);
+            }
+            
+            return board;
+        }
+
         function checkWin(selected) {
             // Check rows
             for (let i = 0; i < 5; i++) {
